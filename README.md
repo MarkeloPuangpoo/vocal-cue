@@ -7,7 +7,7 @@
 [![Platform](<https://img.shields.io/badge/Platform-macOS%2014.0%2B%20(Sonoma)-blue.svg?style=flat-square&logo=apple>)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-5.9%2B-orange.svg?style=flat-square&logo=swift)](https://swift.org)
 [![Audio](https://img.shields.io/badge/Audio-CoreAudio%20%7C%20AVAudioEngine-purple.svg?style=flat-square)](https://developer.apple.com/documentation/avfaudio)
-[![Version](https://img.shields.io/badge/Release-v1.2.0-green.svg?style=flat-square)](https://github.com)
+[![Version](https://img.shields.io/badge/Release-v1.2.0-green.svg?style=flat-square)](https://github.com/MarkeloPuangpoo/vocal-cue/releases/latest)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg?style=flat-square)](LICENSE)
 
 _Turn your Mac, microphone, and headphones into an instant professional stage In-Ear Monitor (IEM) system with real-time vocal processing and master recording._

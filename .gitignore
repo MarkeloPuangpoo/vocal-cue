@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+*/.DS_Store
+
+# Xcode & SwiftPM Build Artifacts
+build/
+.build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+.swiftpm/
+
+# User Recordings
+*.wav
+*.aif
+*.aiff
+*.m4a
+*.mp3

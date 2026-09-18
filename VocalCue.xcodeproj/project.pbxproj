@@ -1,0 +1,365 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1FA4C0BB2CB07D8C28406934 /* LevelMeterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD9EA6CAB49A38194CF8AFDD /* LevelMeterView.swift */; };
+		2126E440CEEED581585294EB /* RecordingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1753D3D299B53E1D5B16B94E /* RecordingView.swift */; };
+		2705AA9A8A69C33B4E24D285 /* KnobView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8851D1EB83AC14C3B9665DFB /* KnobView.swift */; };
+		36B16AF1FBF9D6178F17FF16 /* AudioProcessingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C2333957DF380685A240FA1 /* AudioProcessingView.swift */; };
+		395396DC50E166AA6A72E4E4 /* VocalCueApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAB11CC4DD942904879D8B98 /* VocalCueApp.swift */; };
+		7FDF59E36E674BDDF0B931CB /* EffectsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3288B5971F9F6BFDC392675 /* EffectsView.swift */; };
+		83DE77676C87B0A22EC233B6 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FF341B605CE7C63C8879874 /* ContentView.swift */; };
+		8600D4A60EF9C7EB512A8C2E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 67F3C384D1FB472B0F6E9FDB /* Assets.xcassets */; };
+		C1321FBBF0BE8986C063B157 /* AudioEngineManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD9DE6C9945F7DD3D2F82E8B /* AudioEngineManager.swift */; };
+		F16573DC183315FE94B73BFA /* AudioDeviceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B00D130781CE21A11F63813 /* AudioDeviceManager.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		1753D3D299B53E1D5B16B94E /* RecordingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingView.swift; sourceTree = "<group>"; };
+		4B00D130781CE21A11F63813 /* AudioDeviceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDeviceManager.swift; sourceTree = "<group>"; };
+		67F3C384D1FB472B0F6E9FDB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		6C2333957DF380685A240FA1 /* AudioProcessingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioProcessingView.swift; sourceTree = "<group>"; };
+		8851D1EB83AC14C3B9665DFB /* KnobView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnobView.swift; sourceTree = "<group>"; };
+		9FF341B605CE7C63C8879874 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		B6B7F5250AD81338F07059C7 /* VocalCue.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VocalCue.entitlements; sourceTree = "<group>"; };
+		BD9EA6CAB49A38194CF8AFDD /* LevelMeterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelMeterView.swift; sourceTree = "<group>"; };
+		CD9DE6C9945F7DD3D2F82E8B /* AudioEngineManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioEngineManager.swift; sourceTree = "<group>"; };
+		DAB11CC4DD942904879D8B98 /* VocalCueApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocalCueApp.swift; sourceTree = "<group>"; };
+		DB069F47CE20E0754F1A0B9A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		DB35F9B54CED6884E23A0CE6 /* VocalCue.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VocalCue.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E3288B5971F9F6BFDC392675 /* EffectsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EffectsView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		0CF6366359B60D1770A6438E /* Audio */ = {
+			isa = PBXGroup;
+			children = (
+				4B00D130781CE21A11F63813 /* AudioDeviceManager.swift */,
+				CD9DE6C9945F7DD3D2F82E8B /* AudioEngineManager.swift */,
+			);
+			path = Audio;
+			sourceTree = "<group>";
+		};
+		24F7FBEF54975B89F5E9AD3D = {
+			isa = PBXGroup;
+			children = (
+				62B0337461FA374FC3BDC13B /* VocalCue */,
+				761B49EA623F29E8432F7855 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		62B0337461FA374FC3BDC13B /* VocalCue */ = {
+			isa = PBXGroup;
+			children = (
+				67F3C384D1FB472B0F6E9FDB /* Assets.xcassets */,
+				DB069F47CE20E0754F1A0B9A /* Info.plist */,
+				B6B7F5250AD81338F07059C7 /* VocalCue.entitlements */,
+				DAB11CC4DD942904879D8B98 /* VocalCueApp.swift */,
+				0CF6366359B60D1770A6438E /* Audio */,
+				6FC13511DB34C43478AA046C /* Views */,
+			);
+			path = VocalCue;
+			sourceTree = "<group>";
+		};
+		6FC13511DB34C43478AA046C /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				6C2333957DF380685A240FA1 /* AudioProcessingView.swift */,
+				9FF341B605CE7C63C8879874 /* ContentView.swift */,
+				E3288B5971F9F6BFDC392675 /* EffectsView.swift */,
+				BD9EA6CAB49A38194CF8AFDD /* LevelMeterView.swift */,
+				1753D3D299B53E1D5B16B94E /* RecordingView.swift */,
+				C0E64F2A37DBFCC8A0A654D7 /* Components */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		761B49EA623F29E8432F7855 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				DB35F9B54CED6884E23A0CE6 /* VocalCue.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		C0E64F2A37DBFCC8A0A654D7 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				8851D1EB83AC14C3B9665DFB /* KnobView.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		FF57C47381757D3E8AC5A8EC /* VocalCue */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2C6DB0585580196EA030374A /* Build configuration list for PBXNativeTarget "VocalCue" */;
+			buildPhases = (
+				997892416B0E76935EFADA46 /* Sources */,
+				BD70079DDED0323728376C0E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = VocalCue;
+			packageProductDependencies = (
+			);
+			productName = VocalCue;
+			productReference = DB35F9B54CED6884E23A0CE6 /* VocalCue.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		F29A6A642ECAB439A82FF8D7 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = 05E723223310F47032F1773C /* Build configuration list for PBXProject "VocalCue" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 24F7FBEF54975B89F5E9AD3D;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 761B49EA623F29E8432F7855 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				FF57C47381757D3E8AC5A8EC /* VocalCue */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		BD70079DDED0323728376C0E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8600D4A60EF9C7EB512A8C2E /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		997892416B0E76935EFADA46 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F16573DC183315FE94B73BFA /* AudioDeviceManager.swift in Sources */,
+				C1321FBBF0BE8986C063B157 /* AudioEngineManager.swift in Sources */,
+				36B16AF1FBF9D6178F17FF16 /* AudioProcessingView.swift in Sources */,
+				83DE77676C87B0A22EC233B6 /* ContentView.swift in Sources */,
+				7FDF59E36E674BDDF0B931CB /* EffectsView.swift in Sources */,
+				2705AA9A8A69C33B4E24D285 /* KnobView.swift in Sources */,
+				1FA4C0BB2CB07D8C28406934 /* LevelMeterView.swift in Sources */,
+				2126E440CEEED581585294EB /* RecordingView.swift in Sources */,
+				395396DC50E166AA6A72E4E4 /* VocalCueApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		BB1F1B58C330021E92D5E126 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = VocalCue/VocalCue.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = VocalCue/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vocalcue.app;
+				PRODUCT_NAME = VocalCue;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		C6296B05437764E88BFEE3A5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		C76B58F71AECF0C23C3322B6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = VocalCue/VocalCue.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = VocalCue/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vocalcue.app;
+				PRODUCT_NAME = VocalCue;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		E38F5FDDA7DE9CD15F66D8D2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		05E723223310F47032F1773C /* Build configuration list for PBXProject "VocalCue" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C6296B05437764E88BFEE3A5 /* Debug */,
+				E38F5FDDA7DE9CD15F66D8D2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		2C6DB0585580196EA030374A /* Build configuration list for PBXNativeTarget "VocalCue" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BB1F1B58C330021E92D5E126 /* Debug */,
+				C76B58F71AECF0C23C3322B6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = F29A6A642ECAB439A82FF8D7 /* Project object */;
+}

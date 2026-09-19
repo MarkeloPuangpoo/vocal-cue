@@ -1,12 +1,34 @@
 import SwiftUI
 import CoreAudio
 
+// MARK: - Studio Rack Tab
+enum StudioRackTab: String, CaseIterable, Identifiable {
+    case dsp = "DSP & EQ"
+    case effects = "FX & Tempo"
+    case backing = "Backing Track"
+    case recording = "Takes"
+    case all = "All"
+
+    var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .dsp: return "cpu"
+        case .effects: return "metronome.fill"
+        case .backing: return "music.note.list"
+        case .recording: return "record.circle"
+        case .all: return "square.grid.2x2"
+        }
+    }
+}
+
 // MARK: - ContentView — Main Application UI
 
 struct ContentView: View {
     @EnvironmentObject var engine: AudioEngineManager
     @State private var isPowerHovered = false
     @State private var powerPulse = false
+    @State private var selectedTab: StudioRackTab = .dsp
 
     // Theme colors
     private let bgColor = Color(red: 0.06, green: 0.06, blue: 0.09)
@@ -33,40 +55,55 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 // Header
                 headerSection
-                    .padding(.horizontal, 24)
-                    .padding(.top, 16)
-                    .padding(.bottom, 12)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 14)
+                    .padding(.bottom, 10)
 
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 16) {
+                    VStack(spacing: 14) {
                         // Warnings
                         warningsSection
 
                         // Power + Device Card
                         powerAndDeviceCard
 
+                        // Real-Time Vocal Pitch Meter Card
+                        PitchMeterView(pitchDetector: engine.pitchDetector)
+
                         // Mixer Card (Meters + Knobs)
                         mixerCard
 
-                        // Audio Processing DSP (Noise Gate, EQ, Limiter)
-                        AudioProcessingView(engine: engine)
+                        // Studio Rack Tab Bar
+                        rackTabBar
 
-                        // Effects Card (Reverb & Delay)
-                        EffectsView(engine: engine)
+                        // Dynamic Rack Content based on Selected Tab
+                        if selectedTab == .dsp || selectedTab == .all {
+                            AudioProcessingView(engine: engine)
+                        }
 
-                        // Live Audio Recording (Master Post-Effects WAV)
-                        RecordingView(engine: engine)
+                        if selectedTab == .effects || selectedTab == .all {
+                            EffectsView(engine: engine)
+                            MetronomeView(metronome: engine.metronomeManager, engine: engine)
+                        }
+
+                        if selectedTab == .backing || selectedTab == .all {
+                            BackingTrackView(backingManager: engine.backingManager, engine: engine)
+                        }
+
+                        if selectedTab == .recording || selectedTab == .all {
+                            RecordingView(engine: engine)
+                        }
 
                         // Status
                         statusBar
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, 18)
                     .padding(.bottom, 16)
                 }
             }
         }
-        .frame(minWidth: 420, idealWidth: 440, maxWidth: 500)
-        .frame(minHeight: 640, idealHeight: 720, maxHeight: 850)
+        .frame(minWidth: 440, idealWidth: 480, maxWidth: 540)
+        .frame(minHeight: 680, idealHeight: 760, maxHeight: 920)
         .onAppear {
             // Start pulse animation loop
             withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
@@ -89,18 +126,18 @@ struct ContentView: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 36, height: 36)
+                    .frame(width: 34, height: 34)
                 Image(systemName: "headphones")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.white)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("VocalCue")
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.system(size: 17, weight: .bold))
                     .foregroundColor(.white)
                 Text("Virtual IEM & Vocal Studio")
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.system(size: 9.5, weight: .medium))
                     .foregroundColor(.white.opacity(0.35))
                     .tracking(1.5)
             }
@@ -133,6 +170,46 @@ struct ContentView: View {
                 )
         )
         .animation(.easeInOut(duration: 0.3), value: engine.isRunning)
+    }
+
+    // MARK: - Rack Tab Bar
+
+    private var rackTabBar: some View {
+        HStack(spacing: 4) {
+            ForEach(StudioRackTab.allCases) { tab in
+                let isSelected = selectedTab == tab
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        selectedTab = tab
+                    }
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: tab.icon)
+                            .font(.system(size: 9))
+                        Text(tab.rawValue)
+                            .font(.system(size: 10, weight: isSelected ? .bold : .medium))
+                    }
+                    .foregroundColor(isSelected ? .white : .white.opacity(0.45))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(isSelected ? accentCyan.opacity(0.2) : Color.white.opacity(0.03))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(isSelected ? accentCyan.opacity(0.5) : Color.clear, lineWidth: 1)
+                            )
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(4)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(white: 0.08).opacity(0.6))
+        )
     }
 
     // MARK: - Warnings
@@ -187,31 +264,26 @@ struct ContentView: View {
     // MARK: - Power + Device Card
 
     private var powerAndDeviceCard: some View {
-        VStack(spacing: 20) {
-            // Power button
+        VStack(spacing: 16) {
             powerButton
-
-            // Device selectors
             deviceSelectors
         }
-        .padding(20)
+        .padding(18)
         .background(cardBackground)
     }
 
     private var powerButton: some View {
         Button(action: { engine.toggle() }) {
             ZStack {
-                // Outer glow ring (animated)
                 Circle()
                     .stroke(
                         engine.isRunning ? accentCyan.opacity(powerPulse ? 0.4 : 0.15) : Color.white.opacity(0.04),
                         lineWidth: 2
                     )
-                    .frame(width: 110, height: 110)
-                    .shadow(color: engine.isRunning ? accentCyan.opacity(powerPulse ? 0.35 : 0.1) : .clear, radius: 16)
+                    .frame(width: 96, height: 96)
+                    .shadow(color: engine.isRunning ? accentCyan.opacity(powerPulse ? 0.35 : 0.1) : .clear, radius: 14)
                     .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: powerPulse)
 
-                // Inner body
                 Circle()
                     .fill(
                         RadialGradient(
@@ -220,10 +292,10 @@ struct ContentView: View {
                                 : [Color.white.opacity(0.07), Color.white.opacity(0.02)],
                             center: .center,
                             startRadius: 0,
-                            endRadius: 48
+                            endRadius: 42
                         )
                     )
-                    .frame(width: 96, height: 96)
+                    .frame(width: 84, height: 84)
                     .overlay(
                         Circle()
                             .stroke(
@@ -231,15 +303,14 @@ struct ContentView: View {
                                 lineWidth: 1.5
                             )
                     )
-                    .shadow(color: .black.opacity(0.4), radius: 8, y: 4)
+                    .shadow(color: .black.opacity(0.4), radius: 6, y: 3)
 
-                // Power icon
                 Image(systemName: "power")
-                    .font(.system(size: 34, weight: .light))
+                    .font(.system(size: 30, weight: .light))
                     .foregroundColor(engine.isRunning ? accentCyan : .white.opacity(0.4))
-                    .shadow(color: engine.isRunning ? accentCyan.opacity(0.6) : .clear, radius: 10)
+                    .shadow(color: engine.isRunning ? accentCyan.opacity(0.6) : .clear, radius: 8)
             }
-            .scaleEffect(isPowerHovered ? 1.04 : 1.0)
+            .scaleEffect(isPowerHovered ? 1.03 : 1.0)
             .animation(.easeInOut(duration: 0.2), value: isPowerHovered)
             .animation(.easeInOut(duration: 0.35), value: engine.isRunning)
         }
@@ -250,7 +321,7 @@ struct ContentView: View {
     // MARK: - Device Selectors
 
     private var deviceSelectors: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             deviceRow(
                 icon: "mic.fill",
                 label: "Input",
@@ -276,7 +347,7 @@ struct ContentView: View {
                 devices: engine.deviceManager.outputDevices
             )
         }
-        .padding(14)
+        .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(Color.white.opacity(0.03))
@@ -294,11 +365,11 @@ struct ContentView: View {
         selection: Binding<AudioDeviceID>,
         devices: [AudioDevice]
     ) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(iconColor)
-                .frame(width: 18)
+                .frame(width: 16)
 
             Text(label)
                 .font(.system(size: 11, weight: .medium))
@@ -319,9 +390,8 @@ struct ContentView: View {
     // MARK: - Mixer Card (Meters + Knobs)
 
     private var mixerCard: some View {
-        VStack(spacing: 16) {
-            // Section label
-            sectionHeader(icon: "slider.vertical.3", title: "MIXER")
+        VStack(spacing: 14) {
+            sectionHeader(icon: "slider.vertical.3", title: "MASTER MONITOR & PREAMP")
 
             HStack(spacing: 0) {
                 // Left meter
@@ -330,8 +400,8 @@ struct ContentView: View {
                     rightLevel: engine.inputLevelRight,
                     peak: engine.peakLevel
                 )
-                .frame(height: 160)
-                .padding(.trailing, 12)
+                .frame(height: 145)
+                .padding(.trailing, 10)
 
                 Spacer()
 
@@ -344,7 +414,7 @@ struct ContentView: View {
                     label: "Monitor",
                     displayText: "\(Int(engine.monitorVolume * 100))%",
                     accentColor: accentCyan,
-                    size: 84,
+                    size: 80,
                     defaultValue: 0.7
                 )
 
@@ -359,7 +429,7 @@ struct ContentView: View {
                     label: "Mic Gain",
                     displayText: String(format: "%.1fx", engine.micGain),
                     accentColor: .orange,
-                    size: 84,
+                    size: 80,
                     defaultValue: 0.5
                 )
 
@@ -371,11 +441,11 @@ struct ContentView: View {
                     rightLevel: engine.inputLevelRight,
                     peak: engine.peakLevel
                 )
-                .frame(height: 160)
-                .padding(.leading, 12)
+                .frame(height: 145)
+                .padding(.leading, 10)
             }
         }
-        .padding(20)
+        .padding(18)
         .background(cardBackground)
     }
 
@@ -387,9 +457,9 @@ struct ContentView: View {
                 .font(.system(size: 10))
                 .foregroundColor(accentCyan.opacity(0.7))
             Text(title)
-                .font(.system(size: 11, weight: .bold))
+                .font(.system(size: 10, weight: .bold))
                 .foregroundColor(.white.opacity(0.4))
-                .tracking(2)
+                .tracking(1.5)
             Spacer()
         }
     }
@@ -408,9 +478,9 @@ struct ContentView: View {
 
     private var statusBar: some View {
         HStack {
-            Text("v1.2.0")
+            Text("v1.3.0 Studio")
                 .font(.system(size: 9, weight: .medium, design: .monospaced))
-                .foregroundColor(.white.opacity(0.15))
+                .foregroundColor(.white.opacity(0.2))
 
             Spacer()
 
@@ -418,18 +488,18 @@ struct ContentView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "bolt.fill")
                         .font(.system(size: 8))
-                    Text("Latency ~10-20ms")
+                    Text("Low Latency ~10-20ms")
                 }
                 .font(.system(size: 9, weight: .medium))
-                .foregroundColor(accentCyan.opacity(0.4))
+                .foregroundColor(accentCyan.opacity(0.5))
             }
 
             Spacer()
 
             Text("⌘Q to quit")
                 .font(.system(size: 9, weight: .medium, design: .monospaced))
-                .foregroundColor(.white.opacity(0.15))
+                .foregroundColor(.white.opacity(0.2))
         }
-        .padding(.top, 8)
+        .padding(.top, 6)
     }
 }

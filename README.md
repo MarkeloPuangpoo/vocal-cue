@@ -7,7 +7,7 @@
 [![Platform](<https://img.shields.io/badge/Platform-macOS%2014.0%2B%20(Sonoma)-blue.svg?style=flat-square&logo=apple>)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-5.9%2B-orange.svg?style=flat-square&logo=swift)](https://swift.org)
 [![Audio](https://img.shields.io/badge/Audio-CoreAudio%20%7C%20AVAudioEngine-purple.svg?style=flat-square)](https://developer.apple.com/documentation/avfaudio)
-[![Version](https://img.shields.io/badge/Release-v1.2.0-green.svg?style=flat-square)](https://github.com/MarkeloPuangpoo/vocal-cue/releases/latest)
+[![Version](https://img.shields.io/badge/Release-v1.3.0-green.svg?style=flat-square)](https://github.com/MarkeloPuangpoo/vocal-cue/releases/latest)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg?style=flat-square)](LICENSE)
 
 _Turn your Mac, microphone, and headphones into an instant professional stage In-Ear Monitor (IEM) system with real-time vocal processing and master recording._
@@ -57,19 +57,37 @@ Headphones / In-Ear Monitors (IEMs)
    - **Treble (8.0kHz Shelf):** -12dB to +12dB for airy brightness.
 3. **Smart Noise Gate:** Suppresses background ambient noise (AC hum, computer fan noise) when not actively speaking/singing. Includes real-time `OPEN` / `MUTED` status indicator.
 4. **Spatial Reverb:** 13 factory acoustic presets (Medium Hall, Small Room, Large Chamber, Plate, etc.) with Wet/Dry mix.
-5. **Echo Delay:** Low-latency repeat delay with millisecond-precision timing and feedback control.
+5. **Echo Delay & BPM Sync:** Low-latency repeat delay with millisecond-precision timing, feedback control, and automatic metronome tempo subdivision synchronization (1/4, 1/8, dotted 1/8, 1/16).
 6. **🛡️ Ear-Safe Peak Limiter:** Strict brickwall ceiling at 0 dBFS protects your hearing from sudden audio spikes, dropped mics, or feedback scream.
 
-### 🔴 Master Live Audio Recording Mode
+### 🎵 Rehearsal Backing Track Player
+- **Headphone Monitor Mixing:** Load MP3, WAV, M4A, or FLAC tracks into your in-ear monitor mix with independent **Vocal vs. Music Faders**.
+- **Real-Time Key Shift:** Pitch-shift backing tracks from **-12 to +12 semitones** (±1 Octave) via `AVAudioUnitTimePitch` without affecting audio speed.
+- **Tempo Adjustment:** Speed up or slow down playback from **50% to 150%** tempo while keeping pitch locked.
+- **A-B Rehearsal Looper:** Set Point A and Point B markers to seamlessly repeat difficult vocal passages in continuous loop practice.
 
-- **Post-Effects Master Capture:** Records your voice with **all active DSP effects included** (EQ + Gate + Reverb + Delay + Limiter).
-- **Reference Broadcast Quality:** Uncompressed **24-bit PCM WAV at 48kHz Stereo**, saved automatically to `~/Music/VocalCue Recordings/`.
-- **Zero Performance Drop:** Asynchronously written through a dedicated background queue to keep audio rendering 100% jitter-free.
-- **Inline Playback Preview:** Listen back to your recorded take immediately inside the app with a built-in waveform player and seek bar.
-- **Show in Finder:** One-click shortcut to reveal your WAV file in macOS Finder.
+### ⏱️ In-Ear Metronome & Tap Tempo
+- **In-Ear Only Click:** Crisp procedural tick synthesized directly to monitor output without bleeding into vocal recordings or microphone input.
+- **Interactive Tap Tempo:** Real-time beat averaging for instant tempo alignment.
+- **Automatic Delay Synchronization:** Locks Echo delay intervals directly to the current BPM.
+
+### 🎯 Real-Time Vocal Pitch Meter
+- **Precision Fundamental Tracking:** Fast Accelerate (`vDSP`) autocorrelation detects singer pitch with zero audio latency penalty.
+- **Cents Deviation Gauge:** Visual gauge indicating flat/sharp deviation (-50 to +50 cents) with a glowing green sweet-spot target (±10 cents).
+- **Exact Note & Frequency:** Clear readouts for Note name (e.g., `A4`, `C♯3`) and frequency in Hz.
+
+### 🔴 Dual-Track (Dry + Wet) Recording & M4A Export
+- **Parallel Dry & Wet Capture:** Simultaneously saves both **unprocessed vocal input (Dry)** and **post-effects studio master (Wet)** in broadcast 24-bit 48kHz WAV format.
+- **Multi-Take Management:** Built-in take library with instant A/B preview switching between Dry and Wet tracks.
+- **M4A Export:** One-click conversion to compressed AAC `.m4a` format for instant sharing and AirDrop.
+
+### 📊 Spectrum Analyzer & Interactive EQ Curve
+- **1024-Point Real-Time FFT:** High-resolution audio spectrum display with logarithmic frequency bands (20Hz to 20kHz) and smooth peak decay.
+- **Visual EQ Transfer Curve:** Neon response curve dynamically plots the mathematical filter response of the 80Hz Low-Cut and 3-Band Parametric EQ.
 
 ### 🎨 Native Modern macOS Design
 
+- **Studio Rack Tabs:** Organized view modes for `DSP & EQ`, `FX & Tempo`, `Backing Track`, and `Takes Library`.
 - **Glassmorphic Dark UI:** Handcrafted SwiftUI layout with responsive rotary knobs and calibrated dual-channel RMS/Peak meters (-60 to 0 dBFS).
 - **Menu Bar Companion:** Compact status icon in the macOS menu bar for quick toggling and background operation.
 

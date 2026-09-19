@@ -2,19 +2,21 @@ import SwiftUI
 import AVFoundation
 import AppKit
 
-// MARK: - RecordingView — Live Vocal & Effects Recording
-
+// MARK: - RecordingView — Live Dual (Dry + Wet) Vocal Recording
 struct RecordingView: View {
     @ObservedObject var engine: AudioEngineManager
+    @ObservedObject var recordingManager: RecordingManager
 
     @State private var isPulseActive = false
-    @State private var previewPlayer: AVAudioPlayer? = nil
-    @State private var isPreviewPlaying = false
-    @State private var previewProgress: Double = 0
-    @State private var previewTimer: Timer? = nil
 
     private let accentRed = Color(red: 1.0, green: 0.25, blue: 0.25)
     private let accentCyan = Color(red: 0, green: 0.83, blue: 1.0)
+    private let accentGreen = Color(red: 0, green: 0.9, blue: 0.5)
+
+    init(engine: AudioEngineManager) {
+        self.engine = engine
+        self.recordingManager = engine.recordingManager
+    }
 
     var body: some View {
         VStack(spacing: 14) {
@@ -22,8 +24,8 @@ struct RecordingView: View {
             HStack(spacing: 6) {
                 Image(systemName: "record.circle.fill")
                     .font(.system(size: 11))
-                    .foregroundColor(engine.isRecording ? accentRed : accentRed.opacity(0.7))
-                Text("LIVE RECORDING")
+                    .foregroundColor(recordingManager.isRecording ? accentRed : accentRed.opacity(0.7))
+                Text("DUAL TRACK RECORDING")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundColor(.white.opacity(0.4))
                     .tracking(2)
@@ -31,24 +33,24 @@ struct RecordingView: View {
                 Spacer()
 
                 // Audio Quality Badge
-                Text("24-BIT 48kHz WAV")
+                Text("DRY + WET 24-BIT")
                     .font(.system(size: 9, weight: .bold, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.25))
+                    .foregroundColor(.white.opacity(0.35))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(Capsule().fill(Color.white.opacity(0.04)))
             }
 
             // Main Recording Controls
-            if engine.isRecording {
+            if recordingManager.isRecording {
                 activeRecordingView
             } else {
                 idleRecordingView
             }
 
-            // Last Recorded Take Card (Preview & Finder)
-            if let fileURL = engine.lastRecordedFileURL {
-                lastTakeCard(fileURL: fileURL)
+            // Takes Library & Selected Take Card
+            if !recordingManager.takes.isEmpty {
+                takesLibrarySection
             }
         }
         .padding(18)
@@ -58,21 +60,20 @@ struct RecordingView: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
                         .stroke(
-                            engine.isRecording ? accentRed.opacity(0.4) : Color(white: 0.16),
+                            recordingManager.isRecording ? accentRed.opacity(0.4) : Color(white: 0.16),
                             lineWidth: 1
                         )
                 )
                 .shadow(
-                    color: engine.isRecording ? accentRed.opacity(0.2) : .black.opacity(0.2),
-                    radius: engine.isRecording ? 12 : 8,
+                    color: recordingManager.isRecording ? accentRed.opacity(0.2) : .black.opacity(0.2),
+                    radius: recordingManager.isRecording ? 12 : 8,
                     y: 4
                 )
         )
-        .animation(.easeInOut(duration: 0.25), value: engine.isRecording)
+        .animation(.easeInOut(duration: 0.25), value: recordingManager.isRecording)
     }
 
     // MARK: - Active Recording State
-
     private var activeRecordingView: some View {
         VStack(spacing: 12) {
             HStack(spacing: 12) {
@@ -98,16 +99,16 @@ struct RecordingView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
-                        Text("RECORDING")
+                        Text("RECORDING DUAL")
                             .font(.system(size: 10, weight: .heavy, design: .monospaced))
                             .foregroundColor(accentRed)
-                        Text("• Post-Effects Master")
+                        Text("• Capturing Dry & Wet")
                             .font(.system(size: 10))
                             .foregroundColor(.white.opacity(0.4))
                     }
 
                     // Live Stopwatch Duration
-                    Text(formatDuration(engine.recordingDuration))
+                    Text(formatDuration(recordingManager.recordingDuration))
                         .font(.system(size: 24, weight: .bold, design: .monospaced))
                         .foregroundColor(.white)
                 }
@@ -116,7 +117,7 @@ struct RecordingView: View {
 
                 // Stop & Save Button
                 Button(action: {
-                    engine.stopRecording()
+                    recordingManager.stopRecording()
                 }) {
                     HStack(spacing: 6) {
                         Image(systemName: "stop.fill")
@@ -148,14 +149,13 @@ struct RecordingView: View {
     }
 
     // MARK: - Idle State
-
     private var idleRecordingView: some View {
         HStack {
             VStack(alignment: .leading, spacing: 3) {
-                Text("Record Voice Take")
+                Text("Record Dry + Wet Take")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.white.opacity(0.85))
-                Text("Captures vocal with active EQ, Reverb, Delay & Limiter")
+                Text("Saves both raw vocal & studio FX master simultaneously")
                     .font(.system(size: 10))
                     .foregroundColor(.white.opacity(0.4))
             }
@@ -163,8 +163,7 @@ struct RecordingView: View {
             Spacer()
 
             Button(action: {
-                // Stop any playing preview before recording new take
-                stopPreview()
+                recordingManager.stopPreview()
                 engine.startRecording()
             }) {
                 HStack(spacing: 6) {
@@ -191,144 +190,173 @@ struct RecordingView: View {
         }
     }
 
-    // MARK: - Last Recorded Take Card
-
-    private func lastTakeCard(fileURL: URL) -> some View {
-        VStack(spacing: 8) {
+    // MARK: - Takes Library Section
+    private var takesLibrarySection: some View {
+        VStack(spacing: 10) {
             Divider()
-                .background(Color.white.opacity(0.06))
+                .background(Color.white.opacity(0.08))
 
-            HStack(spacing: 10) {
-                // Audio wave icon
-                Image(systemName: "waveform")
-                    .font(.system(size: 14))
-                    .foregroundColor(accentCyan)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(fileURL.lastPathComponent)
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.8))
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-
-                    Text(getFileSize(url: fileURL))
-                        .font(.system(size: 9.5))
-                        .foregroundColor(.white.opacity(0.35))
-                }
+            // Take Selector Menu
+            HStack {
+                Text("TAKES LIBRARY (\(recordingManager.takes.count))")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.white.opacity(0.4))
+                    .tracking(1)
 
                 Spacer()
 
-                // Quick Play/Pause Preview Button
-                Button(action: {
-                    togglePreview(url: fileURL)
-                }) {
-                    Image(systemName: isPreviewPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: 11))
-                        .foregroundColor(.black)
-                        .frame(width: 26, height: 26)
-                        .background(
-                            Circle()
-                                .fill(accentCyan)
-                                .shadow(color: accentCyan.opacity(0.4), radius: 4)
-                        )
+                if let current = recordingManager.selectedTake {
+                    Picker("", selection: Binding(
+                        get: { current.id },
+                        set: { newID in
+                            if let found = recordingManager.takes.first(where: { $0.id == newID }) {
+                                recordingManager.selectedTake = found
+                                recordingManager.stopPreview()
+                            }
+                        }
+                    )) {
+                        ForEach(recordingManager.takes) { take in
+                            Text("\(take.name) (\(formatDuration(take.duration)))").tag(take.id)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(width: 140)
+                    .tint(.white.opacity(0.7))
                 }
-                .buttonStyle(.plain)
-                .help(isPreviewPlaying ? "Pause Preview" : "Listen to Take")
-
-                // Show in Finder Button
-                Button(action: {
-                    NSWorkspace.shared.activateFileViewerSelecting([fileURL])
-                }) {
-                    Image(systemName: "folder")
-                        .font(.system(size: 11))
-                        .foregroundColor(.white.opacity(0.7))
-                        .frame(width: 26, height: 26)
-                        .background(
-                            Circle()
-                                .fill(Color.white.opacity(0.08))
-                        )
-                }
-                .buttonStyle(.plain)
-                .help("Show file in Finder")
             }
 
-            // Preview Playback Progress Bar (when playing)
-            if isPreviewPlaying || previewProgress > 0 {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(Color.white.opacity(0.1))
-                            .frame(height: 3)
-                        Capsule()
-                            .fill(accentCyan)
-                            .frame(width: max(0, geo.size.width * CGFloat(previewProgress)), height: 3)
+            // Selected Take Detail Card
+            if let take = recordingManager.selectedTake {
+                VStack(spacing: 10) {
+                    // Preview A/B Source Picker
+                    HStack {
+                        Picker("Source", selection: $recordingManager.previewSource) {
+                            ForEach(TakeAudioSource.allCases) { src in
+                                Text(src.rawValue).tag(src)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .onChange(of: recordingManager.previewSource) { _, newSource in
+                            if recordingManager.isPreviewPlaying {
+                                recordingManager.playTake(take, source: newSource)
+                            }
+                        }
+                    }
+
+                    // Scrubber & Transport
+                    HStack(spacing: 10) {
+                        // Play / Pause Preview Button
+                        Button(action: {
+                            recordingManager.togglePreview()
+                        }) {
+                            Image(systemName: recordingManager.isPreviewPlaying ? "pause.fill" : "play.fill")
+                                .font(.system(size: 11))
+                                .foregroundColor(.black)
+                                .frame(width: 28, height: 28)
+                                .background(
+                                    Circle()
+                                        .fill(accentCyan)
+                                        .shadow(color: accentCyan.opacity(0.4), radius: 4)
+                                )
+                        }
+                        .buttonStyle(.plain)
+
+                        // Seek progress bar
+                        Slider(
+                            value: Binding(
+                                get: { recordingManager.previewProgress },
+                                set: { recordingManager.seekPreview(to: $0) }
+                            ),
+                            in: 0...1.0
+                        )
+                        .tint(accentCyan)
+
+                        Text("\(formatDuration(recordingManager.previewCurrentTime)) / \(formatDuration(take.duration))")
+                            .font(.system(size: 9.5, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.5))
+                            .frame(width: 68, alignment: .trailing)
+                    }
+
+                    // Actions: Export M4A, Show in Finder, Delete Take
+                    HStack(spacing: 8) {
+                        // Export to M4A Button
+                        Button(action: {
+                            recordingManager.exportTakeToM4A(take: take, source: recordingManager.previewSource) { result in
+                                switch result {
+                                case .success(let url):
+                                    NSWorkspace.shared.activateFileViewerSelecting([url])
+                                case .failure:
+                                    break
+                                }
+                            }
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "square.and.arrow.up")
+                                    .font(.system(size: 10))
+                                Text(recordingManager.isExporting ? "Exporting..." : "Export M4A")
+                                    .font(.system(size: 10, weight: .semibold))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(
+                                Capsule()
+                                    .fill(accentGreen.opacity(0.25))
+                                    .overlay(Capsule().stroke(accentGreen.opacity(0.5), lineWidth: 1))
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(recordingManager.isExporting)
+
+                        Spacer()
+
+                        // Reveal in Finder Button
+                        Button(action: {
+                            recordingManager.revealTakeInFinder(take)
+                        }) {
+                            Image(systemName: "folder")
+                                .font(.system(size: 11))
+                                .foregroundColor(.white.opacity(0.7))
+                                .frame(width: 26, height: 26)
+                                .background(Circle().fill(Color.white.opacity(0.08)))
+                        }
+                        .buttonStyle(.plain)
+                        .help("Show files in Finder")
+
+                        // Delete Take Button
+                        Button(action: {
+                            recordingManager.deleteTake(take)
+                        }) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 11))
+                                .foregroundColor(.red.opacity(0.7))
+                                .frame(width: 26, height: 26)
+                                .background(Circle().fill(Color.white.opacity(0.08)))
+                        }
+                        .buttonStyle(.plain)
+                        .help("Delete Take")
+                    }
+
+                    if let msg = recordingManager.exportMessage {
+                        Text(msg)
+                            .font(.system(size: 9.5))
+                            .foregroundColor(accentGreen)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
-                .frame(height: 3)
-                .padding(.top, 2)
+                .padding(10)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.white.opacity(0.03))
+                )
             }
         }
     }
 
-    // MARK: - Preview Audio Player Helpers
-
-    private func togglePreview(url: URL) {
-        if isPreviewPlaying {
-            previewPlayer?.pause()
-            isPreviewPlaying = false
-            previewTimer?.invalidate()
-        } else {
-            if previewPlayer == nil || previewPlayer?.url != url {
-                do {
-                    previewPlayer = try AVAudioPlayer(contentsOf: url)
-                    previewPlayer?.prepareToPlay()
-                } catch {
-                    print("[VocalCue] Preview error: \(error)")
-                    return
-                }
-            }
-
-            previewPlayer?.play()
-            isPreviewPlaying = true
-
-            previewTimer?.invalidate()
-            previewTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { _ in
-                guard let player = previewPlayer, player.duration > 0 else { return }
-                previewProgress = player.currentTime / player.duration
-                if !player.isPlaying {
-                    isPreviewPlaying = false
-                    previewProgress = 0
-                    previewTimer?.invalidate()
-                }
-            }
-        }
-    }
-
-    private func stopPreview() {
-        previewPlayer?.stop()
-        previewPlayer = nil
-        isPreviewPlaying = false
-        previewProgress = 0
-        previewTimer?.invalidate()
-    }
-
-    // MARK: - Formatting Helpers
-
-    private func formatDuration(_ duration: TimeInterval) -> String {
-        let mins = Int(duration) / 60
-        let secs = Int(duration) % 60
-        let tenths = Int((duration.truncatingRemainder(dividingBy: 1)) * 10)
+    private func formatDuration(_ seconds: TimeInterval) -> String {
+        let mins = Int(seconds) / 60
+        let secs = Int(seconds) % 60
+        let tenths = Int((seconds.truncatingRemainder(dividingBy: 1)) * 10)
         return String(format: "%02d:%02d.%d", mins, secs, tenths)
-    }
-
-    private func getFileSize(url: URL) -> String {
-        guard let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
-              let size = attrs[.size] as? Int64 else {
-            return "WAV Audio"
-        }
-        let formatter = ByteCountFormatter()
-        formatter.allowedUnits = [.useMB, .useKB]
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: size)
     }
 }

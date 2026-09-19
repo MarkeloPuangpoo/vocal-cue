@@ -155,6 +155,20 @@ struct EffectsView: View {
                         displayValue: "\(Int(engine.delayWetDryMix))%",
                         color: Color(red: 0.5, green: 0.4, blue: 1)
                     )
+
+                    // BPM Sync Status
+                    if engine.metronomeManager.delaySyncMode != .off {
+                        HStack(spacing: 5) {
+                            Image(systemName: "link")
+                                .font(.system(size: 9))
+                                .foregroundColor(Color(red: 0.5, green: 0.4, blue: 1))
+                            Text("BPM Synced (\(engine.metronomeManager.bpm) BPM • \(engine.metronomeManager.delaySyncMode.rawValue))")
+                                .font(.system(size: 9.5, weight: .medium, design: .monospaced))
+                                .foregroundColor(Color(red: 0.5, green: 0.4, blue: 1))
+                            Spacer()
+                        }
+                        .padding(.top, 2)
+                    }
                 }
                 .padding(.leading, 8)
                 .transition(.opacity.combined(with: .move(edge: .top)))

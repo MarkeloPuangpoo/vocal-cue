@@ -162,6 +162,16 @@ struct AudioProcessingView: View {
                 .help("Filters sub-80Hz handling rumble & mic pops")
             }
 
+            // Real-time Spectrum Analyzer & Graphical EQ Curve
+            SpectrumEQView(
+                spectrumAnalyzer: engine.spectrumAnalyzer,
+                lowCutEnabled: engine.lowCutEnabled,
+                eqEnabled: engine.eqEnabled,
+                eqLowGain: engine.eqLowGain,
+                eqMidGain: engine.eqMidGain,
+                eqHighGain: engine.eqHighGain
+            )
+
             if engine.eqEnabled {
                 VStack(spacing: 10) {
                     // Low band (150Hz)

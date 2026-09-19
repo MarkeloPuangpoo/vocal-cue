@@ -34,6 +34,8 @@ let reverbPresets: [ReverbPresetOption] = [
 private enum SettingsKey {
     static let monitorVolume = "inear.monitorVolume"
     static let micGain = "inear.micGain"
+    static let vocalVolume = "inear.vocalVolume"
+    static let backingVolume = "inear.backingVolume"
     static let reverbEnabled = "inear.reverbEnabled"
     static let reverbWetDryMix = "inear.reverbWetDryMix"
     static let reverbPreset = "inear.reverbPreset"
@@ -57,7 +59,7 @@ private enum SettingsKey {
 
 class AudioEngineManager: ObservableObject {
 
-    // MARK: - Audio Nodes
+    // MARK: - Audio Core Nodes
 
     private var engine = AVAudioEngine()
     private let gainMixer = AVAudioMixerNode()
@@ -84,12 +86,18 @@ class AudioEngineManager: ObservableObject {
         )
         return AVAudioUnitEffect(audioComponentDescription: desc)
     }()
+    private let vocalMixerNode = AVAudioMixerNode()
 
-    // MARK: - Sub-managers
+    // MARK: - Sub-Managers
 
     let deviceManager = AudioDeviceManager()
+    let pitchDetector = PitchDetector()
+    let spectrumAnalyzer = SpectrumAnalyzer()
+    let backingManager = BackingTrackManager()
+    let metronomeManager = MetronomeManager()
+    let recordingManager = RecordingManager()
 
-    // MARK: - State
+    // MARK: - Engine State
 
     @Published var isRunning = false
     @Published var showSpeakerWarning = false
@@ -107,6 +115,12 @@ class AudioEngineManager: ObservableObject {
         didSet {
             guard isRunning else { return }
             gainMixer.outputVolume = micGain
+        }
+    }
+    @Published var vocalVolume: Float = 0.85 {
+        didSet {
+            guard isRunning else { return }
+            vocalMixerNode.outputVolume = vocalVolume
         }
     }
 
@@ -175,18 +189,6 @@ class AudioEngineManager: ObservableObject {
     }
     @Published var isLimiterActive: Bool = false
 
-    // MARK: - Live Audio Recording (Master Post-Effects)
-
-    @Published var isRecording: Bool = false
-    @Published var recordingDuration: TimeInterval = 0
-    @Published var lastRecordedFileURL: URL? = nil
-
-    private var recordingFile: AVAudioFile? = nil
-    private var currentRecordingURL: URL? = nil
-    private let recordingQueue = DispatchQueue(label: "com.vocalcue.recordingQueue", qos: .userInitiated)
-    private var recordingTimer: Timer? = nil
-    private var recordingStartDate: Date? = nil
-
     // MARK: - Level Metering
 
     @Published var inputLevelLeft: Float = -60
@@ -204,6 +206,13 @@ class AudioEngineManager: ObservableObject {
     init() {
         loadSettings()
         setupObservers()
+
+        // Link Metronome delay sync callback to AudioEngineManager delay time
+        metronomeManager.onDelayTimeChanged = { [weak self] newDelay in
+            DispatchQueue.main.async {
+                self?.delayTime = newDelay
+            }
+        }
     }
 
     deinit {
@@ -241,13 +250,18 @@ class AudioEngineManager: ObservableObject {
             // Check clock domain compatibility
             checkClockDomains()
 
-            // Attach processing nodes
+            // Attach core vocal processing nodes
             engine.attach(gainMixer)
             engine.attach(eqNode)
             engine.attach(gateNode)
             engine.attach(reverbNode)
             engine.attach(delayNode)
             engine.attach(limiterNode)
+            engine.attach(vocalMixerNode)
+
+            // Attach sub-manager nodes
+            backingManager.attachNodes(to: engine)
+            metronomeManager.attachNodes(to: engine)
 
             // Configure DSP processing nodes
             setupEQNode()
@@ -263,7 +277,7 @@ class AudioEngineManager: ObservableObject {
             delayNode.lowPassCutoff = 15000
             applyDelayMix()
 
-            // Build the audio chain
+            // Check input node format
             let inputNode = engine.inputNode
             let inputFormat = inputNode.outputFormat(forBus: 0)
 
@@ -272,27 +286,38 @@ class AudioEngineManager: ObservableObject {
                 return
             }
 
-            // Create stereo processing format (effects like AVAudioUnitReverb require stereo channels)
+            // Processing format (Stereo @ Hardware sample rate)
             let processingFormat = AVAudioFormat(
                 standardFormatWithSampleRate: inputFormat.sampleRate,
                 channels: 2
             ) ?? inputFormat
 
-            // Chain: Input (mono/stereo) → GainMixer → EQ (stereo) → Gate (stereo) → Reverb (stereo) → Delay (stereo) → Limiter (stereo) → MainMixer (stereo) → Output
+            // 1. Connect Vocal Chain:
+            // Input -> GainMixer -> EQ -> Gate -> Reverb -> Delay -> Limiter -> VocalMixerNode -> MainMixerNode
             engine.connect(inputNode, to: gainMixer, format: inputFormat)
             engine.connect(gainMixer, to: eqNode, format: processingFormat)
             engine.connect(eqNode, to: gateNode, format: processingFormat)
             engine.connect(gateNode, to: reverbNode, format: processingFormat)
             engine.connect(reverbNode, to: delayNode, format: processingFormat)
             engine.connect(delayNode, to: limiterNode, format: processingFormat)
-            engine.connect(limiterNode, to: engine.mainMixerNode, format: processingFormat)
+            engine.connect(limiterNode, to: vocalMixerNode, format: processingFormat)
+            engine.connect(vocalMixerNode, to: engine.mainMixerNode, format: processingFormat)
+
+            // 2. Connect Backing Track Chain to MainMixer
+            backingManager.connectNodes(in: engine, format: processingFormat)
+
+            // 3. Connect Metronome Click to MainMixer (Headphones only)
+            metronomeManager.connectNodes(in: engine, format: processingFormat)
 
             // Apply volume settings
             gainMixer.outputVolume = micGain
+            vocalMixerNode.outputVolume = vocalVolume
             engine.mainMixerNode.outputVolume = monitorVolume
 
-            // Start level metering
-            installLevelTap()
+            // Install live audio taps:
+            // - Tap 1: limiterNode (Wet signal, Level meters, Spectrum, Wet recording)
+            // - Tap 2: gainMixer (Dry signal, Pitch detector, Dry recording)
+            installAudioTaps(format: processingFormat)
 
             // Observe audio configuration changes (device hot-swap, sample rate change, etc.)
             observeEngineConfiguration()
@@ -313,20 +338,26 @@ class AudioEngineManager: ObservableObject {
     }
 
     func stop() {
-        if isRecording {
-            stopRecording()
+        if recordingManager.isRecording {
+            recordingManager.stopRecording()
         }
+
+        backingManager.stop()
+        metronomeManager.stop()
 
         if let observer = configObserver {
             NotificationCenter.default.removeObserver(observer)
             configObserver = nil
         }
 
-        removeLevelTap()
+        removeAudioTaps()
         if engine.isRunning {
             engine.stop()
         }
         engine.reset()
+
+        pitchDetector.reset()
+        spectrumAnalyzer.reset()
 
         DispatchQueue.main.async {
             self.isRunning = false
@@ -338,93 +369,6 @@ class AudioEngineManager: ObservableObject {
 
     func toggle() {
         isRunning ? stop() : start()
-    }
-
-    // MARK: - Live Audio Recording API
-
-    func startRecording() {
-        guard !isRecording else { return }
-
-        // Automatically start engine if not already running
-        if !isRunning {
-            start()
-        }
-
-        // Target directory: ~/Music/VocalCue Recordings/
-        let musicDir = FileManager.default.urls(for: .musicDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Music")
-        let recordDir = musicDir.appendingPathComponent("VocalCue Recordings")
-
-        do {
-            try FileManager.default.createDirectory(at: recordDir, withIntermediateDirectories: true)
-        } catch {
-            print("[VocalCue] Failed to create recordings directory: \(error.localizedDescription)")
-            return
-        }
-
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd_HHmmss"
-        let filename = "VocalCue_Take_\(formatter.string(from: Date())).wav"
-        let fileURL = recordDir.appendingPathComponent(filename)
-
-        let sampleRate: Double = engine.inputNode.outputFormat(forBus: 0).sampleRate > 0
-            ? engine.inputNode.outputFormat(forBus: 0).sampleRate
-            : 48000.0
-
-        let settings: [String: Any] = [
-            AVFormatIDKey: Int(kAudioFormatLinearPCM),
-            AVSampleRateKey: sampleRate,
-            AVNumberOfChannelsKey: 2,
-            AVLinearPCMBitDepthKey: 24,
-            AVLinearPCMIsFloatKey: false,
-            AVLinearPCMIsBigEndianKey: false,
-            AVLinearPCMIsNonInterleaved: false
-        ]
-
-        do {
-            let file = try AVAudioFile(forWriting: fileURL, settings: settings)
-            self.recordingFile = file
-            self.currentRecordingURL = fileURL
-            self.isRecording = true
-            self.recordingDuration = 0
-            self.recordingStartDate = Date()
-
-            // Start live duration update timer
-            self.recordingTimer?.invalidate()
-            let timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-                guard let self, let start = self.recordingStartDate else { return }
-                self.recordingDuration = Date().timeIntervalSince(start)
-            }
-            RunLoop.main.add(timer, forMode: .common)
-            self.recordingTimer = timer
-
-            print("[VocalCue] 🎙️ Live recording started: \(fileURL.path)")
-        } catch {
-            print("[VocalCue] Failed to create recording file: \(error.localizedDescription)")
-        }
-    }
-
-    func stopRecording() {
-        guard isRecording else { return }
-        recordingTimer?.invalidate()
-        recordingTimer = nil
-        isRecording = false
-
-        recordingQueue.async { [weak self] in
-            guard let self else { return }
-            let fileURL = self.currentRecordingURL
-            self.recordingFile = nil
-            self.currentRecordingURL = nil
-
-            DispatchQueue.main.async {
-                self.lastRecordedFileURL = fileURL
-                print("[VocalCue] ⏹ Recording saved: \(fileURL?.path ?? "")")
-            }
-        }
-    }
-
-    func toggleRecording() {
-        isRecording ? stopRecording() : startRecording()
     }
 
     func restart() {
@@ -442,10 +386,111 @@ class AudioEngineManager: ObservableObject {
         }
     }
 
+    // MARK: - Dual Recording Convenience
+
+    func startRecording() {
+        if !isRunning {
+            start()
+        }
+        let sampleRate = engine.inputNode.outputFormat(forBus: 0).sampleRate
+        recordingManager.startRecording(sampleRate: sampleRate)
+    }
+
+    func stopRecording() {
+        recordingManager.stopRecording()
+    }
+
+    func toggleRecording() {
+        if recordingManager.isRecording {
+            stopRecording()
+        } else {
+            startRecording()
+        }
+    }
+
+    // MARK: - Audio Taps (Wet & Dry Streams)
+
+    private func installAudioTaps(format: AVAudioFormat) {
+        guard format.channelCount > 0 else { return }
+        let sampleRate = format.sampleRate
+
+        // --- Tap 1: Post-Limiter (WET SIGNAL) ---
+        limiterNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
+            guard let self, let channelData = buffer.floatChannelData else { return }
+
+            // Feed wet buffer to recording manager
+            self.recordingManager.writeWetBuffer(buffer)
+
+            // Feed to real-time FFT spectrum analyzer
+            self.spectrumAnalyzer.process(samples: channelData[0], count: Int(buffer.frameLength), sampleRate: sampleRate)
+
+            let frameLength = UInt(buffer.frameLength)
+            guard frameLength > 0 else { return }
+
+            // Left channel RMS
+            var rmsLeft: Float = 0
+            vDSP_measqv(channelData[0], 1, &rmsLeft, vDSP_Length(frameLength))
+            rmsLeft = sqrtf(rmsLeft)
+
+            // Right channel RMS
+            var rmsRight: Float = 0
+            if format.channelCount > 1 {
+                vDSP_measqv(channelData[1], 1, &rmsRight, vDSP_Length(frameLength))
+                rmsRight = sqrtf(rmsRight)
+            } else {
+                rmsRight = rmsLeft
+            }
+
+            // Peak detection
+            var peak: Float = 0
+            vDSP_maxmgv(channelData[0], 1, &peak, vDSP_Length(frameLength))
+
+            let dbLeft = 20 * log10(max(rmsLeft, 1e-7))
+            let dbRight = 20 * log10(max(rmsRight, 1e-7))
+            let dbPeak = 20 * log10(max(peak, 1e-7))
+
+            DispatchQueue.main.async {
+                self.inputLevelLeft = self.inputLevelLeft * 0.6 + dbLeft * 0.4
+                self.inputLevelRight = self.inputLevelRight * 0.6 + dbRight * 0.4
+                self.peakLevel = max(self.peakLevel * 0.97, dbPeak)
+
+                // Gate status
+                if self.noiseGateEnabled {
+                    self.isGateOpen = dbPeak >= self.noiseGateThreshold
+                } else {
+                    self.isGateOpen = true
+                }
+
+                // Limiter active indicator
+                if self.limiterEnabled && dbPeak >= -1.5 {
+                    self.isLimiterActive = true
+                } else {
+                    self.isLimiterActive = false
+                }
+            }
+        }
+
+        // --- Tap 2: Post-GainMixer (DRY SIGNAL) ---
+        gainMixer.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
+            guard let self, let channelData = buffer.floatChannelData else { return }
+
+            // Feed dry buffer to recording manager
+            self.recordingManager.writeDryBuffer(buffer)
+
+            // Feed clean vocal to pitch detector
+            self.pitchDetector.process(samples: channelData[0], count: Int(buffer.frameLength), sampleRate: sampleRate)
+        }
+    }
+
+    private func removeAudioTaps() {
+        if engine.isRunning {
+            limiterNode.removeTap(onBus: 0)
+            gainMixer.removeTap(onBus: 0)
+        }
+    }
+
     // MARK: - Engine Configuration Change (Device Hot-Swap)
 
-    /// Subscribe to AVAudioEngine configuration change notifications.
-    /// Fires when the user unplugs headphones, plugs in a USB mic, etc.
     private func observeEngineConfiguration() {
         configObserver = NotificationCenter.default.addObserver(
             forName: .AVAudioEngineConfigurationChange,
@@ -517,7 +562,7 @@ class AudioEngineManager: ObservableObject {
         // Low-Cut can operate independently of 3-Band EQ
         eqNode.bands[0].bypass = !lowCutEnabled
 
-        // 3-Band EQ gains (flat 0dB if EQ is bypassed)
+        // 3-Band EQ gains
         eqNode.bands[1].gain = eqEnabled ? eqLowGain : 0.0
         eqNode.bands[2].gain = eqEnabled ? eqMidGain : 0.0
         eqNode.bands[3].gain = eqEnabled ? eqHighGain : 0.0
@@ -528,7 +573,6 @@ class AudioEngineManager: ObservableObject {
 
     private func setupGateNode() {
         let au = gateNode.audioUnit
-        // Attack 3ms, Release 80ms
         AudioUnitSetParameter(au, 4, kAudioUnitScope_Global, 0, 0.003, 0)
         AudioUnitSetParameter(au, 5, kAudioUnitScope_Global, 0, 0.080, 0)
         AudioUnitSetParameter(au, 0, kAudioUnitScope_Global, 0, 0.0, 0)
@@ -542,16 +586,15 @@ class AudioEngineManager: ObservableObject {
         if noiseGateEnabled {
             gateNode.bypass = false
             AudioUnitSetParameter(au, 3, kAudioUnitScope_Global, 0, noiseGateThreshold, 0)
-            AudioUnitSetParameter(au, 2, kAudioUnitScope_Global, 0, 20.0, 0) // 20:1 expansion
+            AudioUnitSetParameter(au, 2, kAudioUnitScope_Global, 0, 20.0, 0)
         } else {
             gateNode.bypass = true
-            AudioUnitSetParameter(au, 2, kAudioUnitScope_Global, 0, 1.0, 0) // 1:1 transparent
+            AudioUnitSetParameter(au, 2, kAudioUnitScope_Global, 0, 1.0, 0)
         }
     }
 
     private func setupLimiterNode() {
         let au = limiterNode.audioUnit
-        // Attack 2ms, Decay 5ms, Pre-Gain 0dB
         AudioUnitSetParameter(au, 0, kAudioUnitScope_Global, 0, 0.002, 0)
         AudioUnitSetParameter(au, 1, kAudioUnitScope_Global, 0, 0.005, 0)
         AudioUnitSetParameter(au, 2, kAudioUnitScope_Global, 0, 0.0, 0)
@@ -560,91 +603,6 @@ class AudioEngineManager: ObservableObject {
 
     private func applyLimiterSettings() {
         limiterNode.bypass = !limiterEnabled
-    }
-
-    // MARK: - Level Metering & Live Recording Tap
-
-    private func installLevelTap() {
-        let tapNode = limiterNode
-        let format = tapNode.outputFormat(forBus: 0)
-        guard format.channelCount > 0 else { return }
-
-        tapNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
-            guard let self, let channelData = buffer.floatChannelData else { return }
-
-            // Live recording: asynchronously write post-effects audio to WAV file
-            if self.isRecording, let recFile = self.recordingFile {
-                if let bufferCopy = AVAudioPCMBuffer(pcmFormat: buffer.format, frameCapacity: buffer.frameLength) {
-                    bufferCopy.frameLength = buffer.frameLength
-                    for ch in 0..<Int(buffer.format.channelCount) {
-                        if let src = buffer.floatChannelData?[ch], let dst = bufferCopy.floatChannelData?[ch] {
-                            memcpy(dst, src, Int(buffer.frameLength) * MemoryLayout<Float>.size)
-                        }
-                    }
-                    self.recordingQueue.async {
-                        do {
-                            try recFile.write(from: bufferCopy)
-                        } catch {
-                            print("[VocalCue] Recording buffer write error: \(error.localizedDescription)")
-                        }
-                    }
-                }
-            }
-
-            let frameLength = UInt(buffer.frameLength)
-            guard frameLength > 0 else { return }
-
-            // Left channel RMS
-            var rmsLeft: Float = 0
-            vDSP_measqv(channelData[0], 1, &rmsLeft, vDSP_Length(frameLength))
-            rmsLeft = sqrtf(rmsLeft)
-
-            // Right channel RMS (fallback to left if mono)
-            var rmsRight: Float = 0
-            if format.channelCount > 1 {
-                vDSP_measqv(channelData[1], 1, &rmsRight, vDSP_Length(frameLength))
-                rmsRight = sqrtf(rmsRight)
-            } else {
-                rmsRight = rmsLeft
-            }
-
-            // Peak detection
-            var peak: Float = 0
-            vDSP_maxmgv(channelData[0], 1, &peak, vDSP_Length(frameLength))
-
-            // Convert to dB
-            let dbLeft = 20 * log10(max(rmsLeft, 1e-7))
-            let dbRight = 20 * log10(max(rmsRight, 1e-7))
-            let dbPeak = 20 * log10(max(peak, 1e-7))
-
-            DispatchQueue.main.async {
-                // Exponential smoothing for fluid meter movement
-                self.inputLevelLeft = self.inputLevelLeft * 0.6 + dbLeft * 0.4
-                self.inputLevelRight = self.inputLevelRight * 0.6 + dbRight * 0.4
-                // Peak holds slightly longer
-                self.peakLevel = max(self.peakLevel * 0.97, dbPeak)
-
-                // Gate status: OPEN if signal is above threshold or gate is disabled
-                if self.noiseGateEnabled {
-                    self.isGateOpen = dbPeak >= self.noiseGateThreshold
-                } else {
-                    self.isGateOpen = true
-                }
-
-                // Limiter active indicator: flashes when audio peaks near 0 dBFS ceiling
-                if self.limiterEnabled && dbPeak >= -1.5 {
-                    self.isLimiterActive = true
-                } else {
-                    self.isLimiterActive = false
-                }
-            }
-        }
-    }
-
-    private func removeLevelTap() {
-        if engine.isRunning {
-            limiterNode.removeTap(onBus: 0)
-        }
     }
 
     // MARK: - Settings Persistence (UserDefaults)
@@ -657,6 +615,12 @@ class AudioEngineManager: ObservableObject {
         }
         if d.object(forKey: SettingsKey.micGain) != nil {
             micGain = d.float(forKey: SettingsKey.micGain)
+        }
+        if d.object(forKey: SettingsKey.vocalVolume) != nil {
+            vocalVolume = d.float(forKey: SettingsKey.vocalVolume)
+        }
+        if d.object(forKey: SettingsKey.backingVolume) != nil {
+            backingManager.backingVolume = d.float(forKey: SettingsKey.backingVolume)
         }
         if d.object(forKey: SettingsKey.reverbEnabled) != nil {
             reverbEnabled = d.bool(forKey: SettingsKey.reverbEnabled)
@@ -714,11 +678,14 @@ class AudioEngineManager: ObservableObject {
         let d = UserDefaults.standard
         d.set(monitorVolume, forKey: SettingsKey.monitorVolume)
         d.set(micGain, forKey: SettingsKey.micGain)
+        d.set(vocalVolume, forKey: SettingsKey.vocalVolume)
+        d.set(backingManager.backingVolume, forKey: SettingsKey.backingVolume)
         d.set(reverbEnabled, forKey: SettingsKey.reverbEnabled)
         d.set(reverbWetDryMix, forKey: SettingsKey.reverbWetDryMix)
         d.set(reverbPreset.rawValue, forKey: SettingsKey.reverbPreset)
         d.set(delayEnabled, forKey: SettingsKey.delayEnabled)
         d.set(delayTime, forKey: SettingsKey.delayTime)
+        d.set(delayFeedback, forKey: SettingsKey.delayFeedback)
         d.set(delayFeedback, forKey: SettingsKey.delayFeedback)
         d.set(delayWetDryMix, forKey: SettingsKey.delayWetDryMix)
 
@@ -733,10 +700,7 @@ class AudioEngineManager: ObservableObject {
         d.set(limiterEnabled, forKey: SettingsKey.limiterEnabled)
     }
 
-    // MARK: - Observers
-
     private func setupObservers() {
-        // Speaker warning
         deviceManager.$selectedOutputDeviceID
             .receive(on: DispatchQueue.main)
             .sink { [weak self] deviceID in
@@ -745,7 +709,6 @@ class AudioEngineManager: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // Restart engine when device selection changes
         deviceManager.$selectedInputDeviceID
             .dropFirst()
             .receive(on: DispatchQueue.main)
@@ -758,7 +721,6 @@ class AudioEngineManager: ObservableObject {
             .sink { [weak self] _ in self?.restart() }
             .store(in: &cancellables)
 
-        // Auto-save settings on any change (debounced 0.5s)
         objectWillChange
             .debounce(for: .seconds(0.5), scheduler: RunLoop.main)
             .sink { [weak self] _ in
